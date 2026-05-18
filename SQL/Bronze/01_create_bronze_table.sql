@@ -29,8 +29,7 @@ CREATE TABLE bronze.raw_users (
     signup_date          NVARCHAR(MAX),
     plan_type            NVARCHAR(MAX),
     is_active            NVARCHAR(MAX),
-    phone_number         NVARCHAR(MAX),
-    ingestion_timestamp  DATETIME DEFAULT GETDATE()
+    phone_number         NVARCHAR(MAX)
 );
 GO
 
@@ -47,8 +46,7 @@ CREATE TABLE bronze.raw_ai_tools (
     launch_year          NVARCHAR(MAX),
     parent_company       NVARCHAR(MAX),
     avg_user_rating      NVARCHAR(MAX),
-    uae_popularity_rank  NVARCHAR(MAX),
-    ingestion_timestamp  DATETIME DEFAULT GETDATE()
+    uae_popularity_rank  NVARCHAR(MAX)
 );
 GO
 
@@ -66,8 +64,7 @@ CREATE TABLE bronze.raw_ai_usage_logs (
     prompt_category              NVARCHAR(MAX),
     device_type                  NVARCHAR(MAX),
     satisfaction_score           NVARCHAR(MAX),
-    tokens_used                  NVARCHAR(MAX),
-    ingestion_timestamp          DATETIME DEFAULT GETDATE()
+    tokens_used                  NVARCHAR(MAX)
 );
 GO
 
@@ -84,8 +81,7 @@ CREATE TABLE bronze.raw_feedback (
     feedback_text                NVARCHAR(MAX),
     feedback_category            NVARCHAR(MAX),
     sentiment                    NVARCHAR(MAX),
-    would_recommend              NVARCHAR(MAX),
-    ingestion_timestamp          DATETIME DEFAULT GETDATE()  
+    would_recommend              NVARCHAR(MAX)
 );
 GO
 
@@ -103,6 +99,5 @@ CREATE TABLE bronze.raw_subscriptions (
     ending_date                  NVARCHAR(MAX),
     [status]                     NVARCHAR(MAX),    
     billing_cycle                NVARCHAR(MAX),
-    auto_renew                   NVARCHAR(MAX), 
-    ingestion_timestamp          DATETIME DEFAULT GETDATE()                   
+    auto_renew                   NVARCHAR(MAX)                   
 );
