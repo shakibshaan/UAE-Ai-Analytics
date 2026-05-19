@@ -1,0 +1,95 @@
+SELECT
+    user_id,
+    NULLIF(TRIM(full_name), 'N/A') as full_name,
+    CASE
+        WHEN email LIKE '%@%' THEN email
+        ELSE NULL
+    END as email,
+    CASE
+        WHEN CAST(CAST(age as FLOAT) as INT) BETWEEN 0
+        and 120 THEN CAST(CAST(age as FLOAT) as INT)
+        ELSE NULL
+    END as age,
+    CASE
+        UPPER(gender)
+        WHEN 'F' THEN 'Female'
+        WHEN 'M' THEN 'Male'
+        WHEN 'OTHER' THEN 'Other'
+        WHEN 'MALE' THEN 'Male'
+        WHEN 'FEMALE' THEN 'Female'
+        WHEN 'PREFER NOT TO SAY' THEN 'Prefer not to say'
+        ELSE NULL
+    END as gender,
+    CASE
+        UPPER(TRIM(city))
+        WHEN 'DUBAI' THEN 'Dubai'
+        WHEN 'DXB' THEN 'Dubai'
+        WHEN 'ABU DHABI' THEN 'Abu Dhabi'
+        WHEN 'ABUDHABI' THEN 'Abu Dhabi'
+        WHEN 'SHARJAH' THEN 'Sharjah'
+        WHEN 'AJMAN' THEN 'Ajman'
+        WHEN 'RAK' THEN 'Ras Al Khaimah'
+        WHEN 'FUJAIRAH' THEN 'Fujairah'
+        WHEN 'AL AIN' THEN 'Al Ain'
+        ELSE NULL
+    END as city,
+    nationality,
+    CASE
+        UPPER(TRIM(occupation))
+        WHEN 'ACCOUNTANT' THEN 'Accountant'
+        WHEN 'ARCHITECT' THEN 'Architect'
+        WHEN 'BUSINESS OWNER' THEN 'Business Owner'
+        WHEN 'CONTENT CREATOR' THEN 'Content Creator'
+        WHEN 'DATA ANALYST' THEN 'Data Analyst'
+        WHEN 'DOCTOR' THEN 'Doctor'
+        WHEN 'FREELANCER' THEN 'Freelancer'
+        WHEN 'HR MANAGER' THEN 'HR Manager'
+        WHEN 'MARKETING MANAGER' THEN 'Marketing Manager'
+        WHEN 'MARKTING MANAGER' THEN 'Marketing Manager'
+        WHEN 'OTHER' THEN 'Other'
+        WHEN 'SALES EXECUTIVE' THEN 'Sales Executive'
+        WHEN 'SOFTWARE ENGINEER' THEN 'Software Engineer'
+        WHEN 'STUDENT' THEN 'Student'
+        WHEN 'TEACHER' THEN 'Teacher'
+        WHEN 'TEAHCER' THEN 'Teacher'
+        ELSE NULL
+    END as occupation,
+    CASE
+        WHEN CAST(signup_date as DATE) > CAST(GETDATE() as DATE) THEN NULL
+        ELSE signup_date
+    END as signup_date,
+    CASE
+        UPPER(TRIM(plan_type))
+        WHEN 'FREE' THEN 'Free'
+        WHEN 'BASIC' THEN 'Basic'
+        WHEN 'PRO' THEN 'Pro'
+        WHEN 'ENTERPRISE' THEN 'Enterprise'
+        ELSE NULL
+    END as plan_type,
+    CASE
+        UPPER(TRIM(is_active))
+        WHEN 'TRUE' THEN 'Yes'
+        WHEN 'YES' THEN 'Yes'
+        WHEN 'NO' THEN 'No'
+        WHEN 'FALSE' THEN 'No'
+        WHEN 1 THEN 'Yes'
+        WHEN 0 THEN 'No'
+        ELSE NULL
+    END as is_active,
+    phonee_number
+FROM
+    (
+        SELECT
+            *,
+            ROW_NUMBER() OVER(
+                PARTITION BY user_id
+                ORDER BY
+                    signup_date DESC
+            ) as rn
+        FROM
+            bronze.raw_users
+        WHERE
+            user_id IS NOT NULL
+    ) t
+WHERE
+    rn = 1;
