@@ -1,3 +1,25 @@
+-- ongoing
+
+
+=============================
+=============================
+-- insert into silver.raw_users
+TRUNCATE TABLE silver.raw_users;
+INSERT INTO
+    silver.raw_users(
+        user_id,
+        full_name,
+        email,
+        age,
+        gender,
+        city,
+        nationality,
+        occupation,
+        signup_date,
+        plan_type,
+        is_active,
+        phone_number
+    )
 SELECT
     user_id,
     NULLIF(TRIM(full_name), 'N/A') as full_name,
@@ -76,7 +98,46 @@ SELECT
         WHEN 0 THEN 'No'
         ELSE NULL
     END as is_active,
-    phonee_number
+    CASE
+        WHEN phone_number IS NULL
+        OR phone_number = '' THEN NULL
+        WHEN LEN(
+            REPLACE(
+                REPLACE(
+                    REPLACE(
+                        REPLACE(
+                            REPLACE(phone_number, '(', ''),
+                            ')',
+                            ''
+                        ),
+                        '-',
+                        ''
+                    ),
+                    ' ',
+                    ''
+                ),
+                '+',
+                ''
+            )
+        ) > 12 THEN NULL
+        ELSE REPLACE(
+            REPLACE(
+                REPLACE(
+                    REPLACE(
+                        REPLACE(phone_number, '(', ''),
+                        ')',
+                        ''
+                    ),
+                    '-',
+                    ''
+                ),
+                ' ',
+                ''
+            ),
+            '+',
+            ''
+        )
+    END AS phone_number
 FROM
     (
         SELECT
@@ -90,6 +151,67 @@ FROM
             bronze.raw_users
         WHERE
             user_id IS NOT NULL
+    ) t
+WHERE
+    rn = 1;
+
+=============================
+=============================
+-- Insert into raw_ai_tools
+TRUNCATE TABLE silver.raw_ai_tools;
+INSERT INTO
+    silver.raw_ai_tools(
+        tool_id,
+        tool_name,
+        category,
+        pricing_model,
+        monthly_active_users_millions,
+        launch_year,
+        parent_company,
+        avg_user_rating,
+        uae_popularity_rank
+    )
+SELECT
+    tool_id,
+    UPPER(tool_name) as tool_name,
+    CASE
+        UPPER(category)
+        WHEN 'IMAGE GEN' THEN 'IMAGE GENERATION'
+        ELSE UPPER(category)
+    END as category,
+    CASE
+        UPPER(pricing_model)
+        WHEN 'FREE' THEN 'FREE'
+        WHEN 'FREEMIUM' THEN 'FREE'
+        WHEN 'PAID' THEN 'PREMIUM'
+        ELSE NULL
+    END as pricing_model,
+    monthly_active_users_millions,
+    CASE
+        launch_year
+        WHEN 1859 then 2021
+        ELSE launch_year
+    END as launch_year,
+    UPPER(parent_company) as parent_company,
+    CASE
+        WHEN TRY_CAST(avg_user_rating AS FLOAT) BETWEEN 1
+        AND 5 THEN CAST(
+            TRY_CAST(avg_user_rating AS FLOAT) AS DECIMAL(3, 1)
+        )
+        ELSE NULL
+    END AS avg_user_rating,
+    CAST(TRY_CAST(uae_popularity_rank AS FLOAT) AS INT) as uae_popularity_rank
+FROM
+    (
+        SELECT
+            *,
+            ROW_NUMBER() OVER(
+                PARTITION BY tool_id
+                ORDER BY
+                    tool_id
+            ) as rn
+        FROM
+            bronze.raw_ai_tools
     ) t
 WHERE
     rn = 1;
