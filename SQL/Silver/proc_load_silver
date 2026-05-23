@@ -23,10 +23,11 @@ CREATE OR ALTER PROCEDURE silver.load_silver AS
 BEGIN
 =============================
 =============================
--- insert into silver.raw_users
-TRUNCATE TABLE silver.raw_users;
+-- insert into silver.users
+TRUNCATE TABLE silver.users;
+
 INSERT INTO
-    silver.raw_users(
+    silver.users(
         user_id,
         full_name,
         email,
@@ -175,12 +176,11 @@ FROM
 WHERE
     rn = 1;
 
-=============================
-=============================
 -- Insert into raw_ai_tools
-TRUNCATE TABLE silver.raw_ai_tools;
+TRUNCATE TABLE silver.ai_tools;
+
 INSERT INTO
-    silver.raw_ai_tools(
+    silver.ai_tools(
         tool_id,
         tool_name,
         category,
@@ -237,6 +237,68 @@ FROM
         FROM
             bronze.raw_ai_tools
     ) t
+WHERE
+    rn = 1;
+
+-- Insert into ai_usage_logs
+TRUNCATE TABLE silver.ai_usage_logs;
+
+INSERT INTO
+    silver.ai_usage_logs(
+        log_id,
+        user_id,
+        tool_id,
+        session_date,
+        session_duration_minutes,
+        prompts_per_session,
+        prompt_category,
+        device_type,
+        satisfaction_score,
+        tokens_used
+    )
+SELECT
+    l.log_id as log_id,
+    l.user_id as user_id,
+    l.tool_id as tool_id,
+    session_date,
+    CASE
+        WHEN TRY_CAST(session_duration_minutes as FLOAT) BETWEEN 0
+        AND 480 THEN CAST(
+            TRY_CAST(session_duration_minutes as FLOAT) as INT
+        )
+    END as session_duration_minutes,
+    CASE
+        WHEN TRY_CAST(prompts_per_session as FLOAT) > 0 THEN CAST(TRY_CAST(prompts_per_session as FLOAT) as INT)
+        ELSE NULL
+    END as prompts_per_session,
+    TRIM(UPPER(prompt_category)) as prompt_category,
+    CASE
+        WHEN device_type IS NULL then 'OTHER'
+        WHEN TRIM(UPPER((device_type))) IN ('NULL', 'N/A', '""') THEN 'OTHER'
+        ELSE TRIM(UPPER((device_type)))
+    END as device_type,
+    CASE
+        WHEN TRY_CAST(satisfaction_score as FLOAT) BETWEEN 0
+        and 5 THEN CAST(TRY_CAST(satisfaction_score as FLOAT) as INT)
+        ELSE NULL
+    END as satisfaction_score,
+    CAST(TRY_CAST(tokens_used as FLOAT) as INT) as tokens_used
+FROM
+    (
+        SELECT
+            *,
+            ROW_NUMBER() OVER(
+                PARTITION BY log_id
+                ORDER BY
+                    log_id
+            ) as rn
+        FROM
+            bronze.raw_ai_usage_logs
+        WHERE
+            log_id IS NOT NULL
+    ) l
+    INNER JOIN silver.users u ON l.user_id = u.user_id
+    INNER JOIN silver.ai_tools s ON l.tool_id = s.tool_id
 WHERE
     rn = 1;
 END
