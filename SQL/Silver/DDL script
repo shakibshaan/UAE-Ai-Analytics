@@ -81,9 +81,11 @@ CREATE TABLE silver.feedback (
     feedback_category            NVARCHAR(MAX),
     sentiment                    NVARCHAR(MAX),
     would_recommend              NVARCHAR(MAX),
+    data_quality_flag            NVARCHAR(MAX),
     dwh_create_date              DATETIME2 DEFAULT GETDATE() 
 );
 GO
+
 
 IF OBJECT_ID ('silver.subscriptions', 'U') IS NOT NULL 
     DROP TABLE silver.subscriptions;
@@ -102,3 +104,4 @@ CREATE TABLE silver.subscriptions (
     auto_renew                   NVARCHAR(MAX), 
     dwh_create_date              DATETIME2 DEFAULT GETDATE()                 
 );
+
