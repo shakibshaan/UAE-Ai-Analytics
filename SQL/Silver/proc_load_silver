@@ -23,7 +23,9 @@ CREATE OR ALTER PROCEDURE silver.load_silver AS
 BEGIN
 =============================
 =============================
--- insert into silver.users
+use UAE_AI_Analytics;
+
+-- insert into silver.raw_users
 TRUNCATE TABLE silver.users;
 
 INSERT INTO
@@ -301,5 +303,172 @@ FROM
     INNER JOIN silver.ai_tools s ON l.tool_id = s.tool_id
 WHERE
     rn = 1;
-END
 
+-- insert into silver.feedback
+TRUNCATE TABLE silver.feedback;
+INSERT INTO silver.feedback(
+    feedback_id,
+    user_id,
+    tool_id,
+    feedback_date,
+    rating,
+    feedback_text,
+    feedback_category,
+    sentiment,
+    data_quality_flag,
+    would_recommend
+)
+SELECT
+    feedback_id,
+    l.user_id as user_id,
+    l.tool_id as tool_id,
+    CASE
+        WHEN TRY_CAST(feedback_date AS DATE) > GETDATE() THEN NULL
+        ELSE TRY_CAST(feedback_date AS DATE)
+    END as feedback_date,
+    CASE
+        WHEN TRY_CAST(rating as FLOAT) BETWEEN 0
+        AND 10 THEN CAST(TRY_CAST(rating as FLOAT) as INT)
+        ELSE NULL
+    END as rating,
+    CASE
+        -- NULLs
+        WHEN feedback_text IS NULL THEN NULL -- Empty after trimming
+        WHEN TRIM(feedback_text) = '' THEN NULL -- Numeric-only values
+        WHEN TRY_CAST(feedback_text AS FLOAT) IS NOT NULL THEN NULL -- Too short
+        WHEN LEN(TRIM(feedback_text)) < 3 THEN NULL -- Suspicious characters
+        WHEN PATINDEX('%[^A-Za-z0-9 ,.?!''":;()-]%', feedback_text) > 0 THEN NULL
+        WHEN LEFT(TRIM(feedback_text), 1) = '"' THEN STUFF(TRIM(feedback_text), 1, 1, '')
+        WHEN feedback_text = '!!!!!' THEN NULL
+        WHEN feedback_text = 'asdfjkl;' THEN NULL
+        ELSE TRIM(feedback_text)
+    END AS feedback_text,
+    CASE
+        -- NULLs
+        WHEN feedback_category IS NULL THEN NULL -- Empty after trimming
+        WHEN TRIM(feedback_category) = '' THEN NULL -- Numeric-only values
+        WHEN TRY_CAST(feedback_category AS FLOAT) IS NOT NULL THEN NULL -- Too short
+        WHEN LEN(TRIM(feedback_category)) < 3 THEN NULL -- Suspicious characters
+        WHEN PATINDEX('%[^A-Za-z0-9 ,.?!''":;()-]%', feedback_category) > 0 THEN NULL
+        WHEN RIGHT(TRIM(feedback_category), 2) = '."' THEN LEFT(
+            TRIM(feedback_category),
+            LEN(TRIM(feedback_category)) - 2
+        )
+        ELSE LOWER(TRIM(feedback_category))
+    END AS feedback_category,
+    CASE
+        WHEN UPPER(sentiment) IN ('N/A', '') THEN NULL
+        ELSE UPPER(sentiment)
+    END as sentiment,
+    CASE
+        WHEN TRY_CAST(rating AS FLOAT) >= 7
+        AND UPPER(TRIM(sentiment)) = 'NEGATIVE' THEN 'SENTIMENT_MISMATCH'
+        WHEN TRY_CAST(rating as FLOAT) <= 2
+        AND UPPER(TRIM(sentiment)) = 'POSITIVE' THEN 'SENTIMENT_MISMATCH'
+        ELSE NULL
+    END AS data_quality_flag,
+    CASE
+    WHEN would_recommend IS NULL THEN NULL
+    WHEN UPPER(TRIM(would_recommend)) = 'NEGATIVE,1' THEN 'NO'
+    WHEN UPPER(TRIM(would_recommend)) = 'NEGATIVE,0' THEN 'NO'
+    WHEN UPPER(TRIM(would_recommend)) = 'NEGATIVE,N/A' THEN 'NO'
+    WHEN UPPER(TRIM(would_recommend)) = 'NEGATIVE,NO' THEN 'NO'
+    WHEN UPPER(TRIM(would_recommend)) = 'NEGATIVE,F' THEN 'NO'
+    WHEN UPPER(TRIM(would_recommend)) = 'NEGATIVE,FALSE' THEN 'NO'
+    WHEN UPPER(TRIM(would_recommend)) = 'POSITIVE,1' THEN 'YES'
+    WHEN UPPER(TRIM(would_recommend)) = 'POSITIVE,Yes' THEN 'YES'
+    WHEN UPPER(TRIM(would_recommend)) = 'POSITIVE,TRUE' THEN 'YES'
+    WHEN TRIM(
+        UPPER(
+            REPLACE(
+                REPLACE(
+                    REPLACE(
+                        REPLACE(would_recommend, '(', ''),
+                    ')', ''),
+                ',', ''),
+            '"', '')
+        )
+    ) IN ('', 'NULL', 'N/A')
+    THEN NULL
+
+    WHEN TRIM(
+        UPPER(
+            REPLACE(
+                REPLACE(
+                    REPLACE(
+                        REPLACE(would_recommend, '(', ''),
+                    ')', ''),
+                ',', ''),
+            '"', '')
+        )
+    ) IN ('YES', 'Y', 'TRUE', '1','POSITIVE')
+    THEN 'YES'
+
+    WHEN TRIM(
+        UPPER(
+            REPLACE(
+                REPLACE(
+                    REPLACE(
+                        REPLACE(would_recommend, '(', ''),
+                    ')', ''),
+                ',', ''),
+            '"', '')
+        )
+    ) IN ('NO', 'N', 'FALSE', '0', 'NEGATIVE')
+    THEN 'NO'
+    ELSE NULL
+END AS would_recommend
+FROM
+    (
+        SELECT
+            *,
+            ROW_NUMBER() OVER(
+                PARTITION BY feedback_id
+                ORDER BY
+                    feedback_date
+            ) as rn
+        FROM
+            bronze.raw_feedback
+        WHERE
+            feedback_id IS NOT NULL
+    ) l
+INNER JOIN silver.users s
+    ON l.user_id = s.user_id
+INNER JOIN silver.ai_tools t
+    ON l.tool_id = t.tool_id
+WHERE
+    rn = 1;
+
+
+--- susbcription
+
+SELECT 
+    subscription_id,
+    user_id as user_id,
+   CASE 
+    WHEN UPPER(TRIM(plan_type)) = 'PROO' THEN 'PRO'
+    WHEN UPPER(TRIM(plan_type)) = 'FREE' THEN 'BASIC'
+    WHEN UPPER(TRIM(plan_type)) IN ('N/A', '--') THEN NULL
+    ELSE UPPER(TRIM(plan_type))
+END as plan_type,
+   CASE 
+    WHEN UPPER(TRIM(currency)) = 'ADE' THEN 'AED'
+    WHEN UPPER(TRIM(currency)) IN ('N/A', '--') THEN NULL
+    ELSE UPPER(TRIM(currency))
+END as currency,
+    amount_paid,
+    starting_date,
+    ending_date,
+    [status],
+    billing_cycle,
+    auto_renew
+FROM (
+SELECT
+    *,
+    ROW_NUMBER() OVER(
+        PARTITION BY subscription_id
+        ORDER BY starting_date
+    ) as rn
+FROM bronze.raw_subscriptions
+) l
+WHERE rn = 1;
