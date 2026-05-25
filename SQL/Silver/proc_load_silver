@@ -1,4 +1,4 @@
--- ongoing
+
 /*
 ===============================================================================
 Stored Procedure: Load Silver Layer (Bronze -> Silver)
@@ -15,460 +15,607 @@ Parameters:
 	  This stored procedure does not accept any parameters or return any values.
 
 Usage Example:
-    EXEC Silver.load_silver;
+    EXEC silver.load_silver;
 ===============================================================================
 */
 
 CREATE OR ALTER PROCEDURE silver.load_silver AS
 BEGIN
-=============================
-=============================
-use UAE_AI_Analytics;
+    DECLARE @start_time DATETIME, @end_time DATETIME, @batch_start_time DATETIME, @batch_end_time DATETIME;
+    BEGIN TRY
+      SET @batch_start_time = GETDATE();
+        PRINT '================================================';
+        PRINT 'Loading Silver Layer';
+        PRINT '================================================';
 
--- insert into silver.raw_users
-TRUNCATE TABLE silver.users;
+        -- ============================================================
+        -- silver.users
+        -- ============================================================
 
-INSERT INTO
-    silver.users(
-        user_id,
-        full_name,
-        email,
-        age,
-        gender,
-        city,
-        nationality,
-        occupation,
-        signup_date,
-        plan_type,
-        is_active,
-        phone_number
-    )
-SELECT
-    user_id,
-    NULLIF(TRIM(full_name), 'N/A') as full_name,
-    CASE
-        WHEN email LIKE '%@%' THEN email
-        ELSE NULL
-    END as email,
-    CASE
-        WHEN CAST(CAST(age as FLOAT) as INT) BETWEEN 0
-        and 120 THEN CAST(CAST(age as FLOAT) as INT)
-        ELSE NULL
-    END as age,
-    CASE
-        UPPER(gender)
-        WHEN 'F' THEN 'Female'
-        WHEN 'M' THEN 'Male'
-        WHEN 'OTHER' THEN 'Other'
-        WHEN 'MALE' THEN 'Male'
-        WHEN 'FEMALE' THEN 'Female'
-        WHEN 'PREFER NOT TO SAY' THEN 'Prefer not to say'
-        ELSE NULL
-    END as gender,
-    CASE
-        UPPER(TRIM(city))
-        WHEN 'DUBAI' THEN 'Dubai'
-        WHEN 'DXB' THEN 'Dubai'
-        WHEN 'ABU DHABI' THEN 'Abu Dhabi'
-        WHEN 'ABUDHABI' THEN 'Abu Dhabi'
-        WHEN 'SHARJAH' THEN 'Sharjah'
-        WHEN 'AJMAN' THEN 'Ajman'
-        WHEN 'RAK' THEN 'Ras Al Khaimah'
-        WHEN 'FUJAIRAH' THEN 'Fujairah'
-        WHEN 'AL AIN' THEN 'Al Ain'
-        ELSE NULL
-    END as city,
-    nationality,
-    CASE
-        UPPER(TRIM(occupation))
-        WHEN 'ACCOUNTANT' THEN 'Accountant'
-        WHEN 'ARCHITECT' THEN 'Architect'
-        WHEN 'BUSINESS OWNER' THEN 'Business Owner'
-        WHEN 'CONTENT CREATOR' THEN 'Content Creator'
-        WHEN 'DATA ANALYST' THEN 'Data Analyst'
-        WHEN 'DOCTOR' THEN 'Doctor'
-        WHEN 'FREELANCER' THEN 'Freelancer'
-        WHEN 'HR MANAGER' THEN 'HR Manager'
-        WHEN 'MARKETING MANAGER' THEN 'Marketing Manager'
-        WHEN 'MARKTING MANAGER' THEN 'Marketing Manager'
-        WHEN 'OTHER' THEN 'Other'
-        WHEN 'SALES EXECUTIVE' THEN 'Sales Executive'
-        WHEN 'SOFTWARE ENGINEER' THEN 'Software Engineer'
-        WHEN 'STUDENT' THEN 'Student'
-        WHEN 'TEACHER' THEN 'Teacher'
-        WHEN 'TEAHCER' THEN 'Teacher'
-        ELSE NULL
-    END as occupation,
-    CASE
-        WHEN CAST(signup_date as DATE) > CAST(GETDATE() as DATE) THEN NULL
-        ELSE signup_date
-    END as signup_date,
-    CASE
-        UPPER(TRIM(plan_type))
-        WHEN 'FREE' THEN 'Free'
-        WHEN 'BASIC' THEN 'Basic'
-        WHEN 'PRO' THEN 'Pro'
-        WHEN 'ENTERPRISE' THEN 'Enterprise'
-        ELSE NULL
-    END as plan_type,
-    CASE
-        UPPER(TRIM(is_active))
-        WHEN 'TRUE' THEN 'Yes'
-        WHEN 'YES' THEN 'Yes'
-        WHEN 'NO' THEN 'No'
-        WHEN 'FALSE' THEN 'No'
-        WHEN 1 THEN 'Yes'
-        WHEN 0 THEN 'No'
-        ELSE NULL
-    END as is_active,
-    CASE
-        WHEN phone_number IS NULL
-        OR phone_number = '' THEN NULL
-        WHEN LEN(
-            REPLACE(
-                REPLACE(
+        SET @start_time = GETDATE();
+		PRINT '>> Truncating Table: silver.users';
+        TRUNCATE TABLE silver.users;
+		PRINT '>> Inserting Data Into: silver.users';
+
+        INSERT INTO
+            silver.users(
+                user_id,
+                full_name,
+                email,
+                age,
+                gender,
+                city,
+                nationality,
+                occupation,
+                signup_date,
+                plan_type,
+                is_active,
+                phone_number
+            )
+        SELECT
+            user_id,
+            NULLIF(TRIM(full_name), 'N/A') as full_name,
+            CASE
+                WHEN email LIKE '%@%' THEN email
+                ELSE NULL
+            END as email,
+            CASE
+                WHEN CAST(CAST(age as FLOAT) as INT) BETWEEN 0
+                and 120 THEN CAST(CAST(age as FLOAT) as INT)
+                ELSE NULL
+            END as age,
+            CASE
+                UPPER(gender)
+                WHEN 'F' THEN 'Female'
+                WHEN 'M' THEN 'Male'
+                WHEN 'OTHER' THEN 'Other'
+                WHEN 'MALE' THEN 'Male'
+                WHEN 'FEMALE' THEN 'Female'
+                WHEN 'PREFER NOT TO SAY' THEN 'Prefer not to say'
+                ELSE NULL
+            END as gender,
+            CASE
+                UPPER(TRIM(city))
+                WHEN 'DUBAI' THEN 'Dubai'
+                WHEN 'DXB' THEN 'Dubai'
+                WHEN 'ABU DHABI' THEN 'Abu Dhabi'
+                WHEN 'ABUDHABI' THEN 'Abu Dhabi'
+                WHEN 'SHARJAH' THEN 'Sharjah'
+                WHEN 'AJMAN' THEN 'Ajman'
+                WHEN 'RAK' THEN 'Ras Al Khaimah'
+                WHEN 'FUJAIRAH' THEN 'Fujairah'
+                WHEN 'AL AIN' THEN 'Al Ain'
+                ELSE NULL
+            END as city,
+            nationality,
+            CASE
+                UPPER(TRIM(occupation))
+                WHEN 'ACCOUNTANT' THEN 'Accountant'
+                WHEN 'ARCHITECT' THEN 'Architect'
+                WHEN 'BUSINESS OWNER' THEN 'Business Owner'
+                WHEN 'CONTENT CREATOR' THEN 'Content Creator'
+                WHEN 'DATA ANALYST' THEN 'Data Analyst'
+                WHEN 'DOCTOR' THEN 'Doctor'
+                WHEN 'FREELANCER' THEN 'Freelancer'
+                WHEN 'HR MANAGER' THEN 'HR Manager'
+                WHEN 'MARKETING MANAGER' THEN 'Marketing Manager'
+                WHEN 'MARKTING MANAGER' THEN 'Marketing Manager'
+                WHEN 'OTHER' THEN 'Other'
+                WHEN 'SALES EXECUTIVE' THEN 'Sales Executive'
+                WHEN 'SOFTWARE ENGINEER' THEN 'Software Engineer'
+                WHEN 'STUDENT' THEN 'Student'
+                WHEN 'TEACHER' THEN 'Teacher'
+                WHEN 'TEAHCER' THEN 'Teacher'
+                ELSE NULL
+            END as occupation,
+            CASE
+                WHEN CAST(signup_date as DATE) > CAST(GETDATE() as DATE) THEN NULL
+                ELSE signup_date
+            END as signup_date,
+            CASE
+                UPPER(TRIM(plan_type))
+                WHEN 'FREE' THEN 'Free'
+                WHEN 'BASIC' THEN 'Basic'
+                WHEN 'PRO' THEN 'Pro'
+                WHEN 'ENTERPRISE' THEN 'Enterprise'
+                ELSE NULL
+            END as plan_type,
+            CASE
+                UPPER(TRIM(is_active))
+                WHEN 'TRUE' THEN 'Yes'
+                WHEN 'YES' THEN 'Yes'
+                WHEN 'NO' THEN 'No'
+                WHEN 'FALSE' THEN 'No'
+                WHEN 1 THEN 'Yes'
+                WHEN 0 THEN 'No'
+                ELSE NULL
+            END as is_active,
+            CASE
+                WHEN phone_number IS NULL
+                OR phone_number = '' THEN NULL
+                WHEN LEN(
                     REPLACE(
                         REPLACE(
-                            REPLACE(phone_number, '(', ''),
-                            ')',
+                            REPLACE(
+                                REPLACE(
+                                    REPLACE(phone_number, '(', ''),
+                                    ')',
+                                    ''
+                                ),
+                                '-',
+                                ''
+                            ),
+                            ' ',
                             ''
                         ),
-                        '-',
+                        '+',
+                        ''
+                    )
+                ) > 12 THEN NULL
+                ELSE REPLACE(
+                    REPLACE(
+                        REPLACE(
+                            REPLACE(
+                                REPLACE(phone_number, '(', ''),
+                                ')',
+                                ''
+                            ),
+                            '-',
+                            ''
+                        ),
+                        ' ',
                         ''
                     ),
-                    ' ',
+                    '+',
                     ''
-                ),
-                '+',
-                ''
+                )
+            END AS phone_number
+        FROM
+            (
+                SELECT
+                    *,
+                    ROW_NUMBER() OVER(
+                        PARTITION BY user_id
+                        ORDER BY
+                            signup_date DESC
+                    ) as rn
+                FROM
+                    bronze.raw_users
+                WHERE
+                    user_id IS NOT NULL
+            ) t
+        WHERE
+            rn = 1;
+        SET @end_time = GETDATE();
+        PRINT '>> Load Duration: ' + CAST(DATEDIFF(SECOND, @start_time, @end_time) AS NVARCHAR) + ' seconds';
+        PRINT '>> -------------';
+
+        -- ============================================================
+        -- silver.ai_tools
+        -- ============================================================
+
+        SET @start_time = GETDATE();
+		PRINT '>> Truncating Table: silver.ai_tools';
+        TRUNCATE TABLE silver.ai_tools;
+		PRINT '>> Inserting Data Into: silver.ai_tools';
+
+        INSERT INTO
+            silver.ai_tools(
+                tool_id,
+                tool_name,
+                category,
+                pricing_model,
+                monthly_active_users_millions,
+                launch_year,
+                parent_company,
+                avg_user_rating,
+                uae_popularity_rank
             )
-        ) > 12 THEN NULL
-        ELSE REPLACE(
-            REPLACE(
-                REPLACE(
-                    REPLACE(
-                        REPLACE(phone_number, '(', ''),
-                        ')',
-                        ''
-                    ),
-                    '-',
-                    ''
-                ),
-                ' ',
-                ''
-            ),
-            '+',
-            ''
-        )
-    END AS phone_number
-FROM
-    (
         SELECT
-            *,
-            ROW_NUMBER() OVER(
-                PARTITION BY user_id
-                ORDER BY
-                    signup_date DESC
-            ) as rn
+            tool_id,
+            UPPER(tool_name) as tool_name,
+            CASE
+                UPPER(category)
+                WHEN 'IMAGE GEN' THEN 'IMAGE GENERATION'
+                ELSE UPPER(category)
+            END as category,
+            CASE
+                UPPER(pricing_model)
+                WHEN 'FREE' THEN 'FREE'
+                WHEN 'FREEMIUM' THEN 'FREE'
+                WHEN 'PAID' THEN 'PREMIUM'
+                ELSE NULL
+            END as pricing_model,
+            monthly_active_users_millions,
+            CASE
+                launch_year
+                WHEN 1859 then 2021
+                ELSE launch_year
+            END as launch_year,
+            UPPER(parent_company) as parent_company,
+            CASE
+                WHEN TRY_CAST(avg_user_rating AS FLOAT) BETWEEN 1
+                AND 5 THEN CAST(
+                    TRY_CAST(avg_user_rating AS FLOAT) AS DECIMAL(3, 1)
+                )
+                ELSE NULL
+            END AS avg_user_rating,
+            CASE
+                WHEN tool_id = 'TOOL005' THEN 5
+                WHEN tool_id = 'TOOL011' THEN 11
+                ELSE CAST(TRY_CAST(uae_popularity_rank AS FLOAT) AS INT)
+            END as uae_popularity_rank
         FROM
-            bronze.raw_users
+            (
+                SELECT
+                    *,
+                    ROW_NUMBER() OVER(
+                        PARTITION BY tool_id
+                        ORDER BY
+                            tool_id
+                    ) as rn
+                FROM
+                    bronze.raw_ai_tools
+                WHERE
+                    tool_id IS NOT NULL
+            ) t
         WHERE
-            user_id IS NOT NULL
-    ) t
-WHERE
-    rn = 1;
+            rn = 1;
+        SET @end_time = GETDATE();
+        PRINT '>> Load Duration: ' + CAST(DATEDIFF(SECOND, @start_time, @end_time) AS NVARCHAR) + ' seconds';
+        PRINT '>> -------------';
 
--- Insert into raw_ai_tools
-TRUNCATE TABLE silver.ai_tools;
 
-INSERT INTO
-    silver.ai_tools(
-        tool_id,
-        tool_name,
-        category,
-        pricing_model,
-        monthly_active_users_millions,
-        launch_year,
-        parent_company,
-        avg_user_rating,
-        uae_popularity_rank
-    )
-SELECT
-    tool_id,
-    UPPER(tool_name) as tool_name,
-    CASE
-        UPPER(category)
-        WHEN 'IMAGE GEN' THEN 'IMAGE GENERATION'
-        ELSE UPPER(category)
-    END as category,
-    CASE
-        UPPER(pricing_model)
-        WHEN 'FREE' THEN 'FREE'
-        WHEN 'FREEMIUM' THEN 'FREE'
-        WHEN 'PAID' THEN 'PREMIUM'
-        ELSE NULL
-    END as pricing_model,
-    monthly_active_users_millions,
-    CASE
-        launch_year
-        WHEN 1859 then 2021
-        ELSE launch_year
-    END as launch_year,
-    UPPER(parent_company) as parent_company,
-    CASE
-        WHEN TRY_CAST(avg_user_rating AS FLOAT) BETWEEN 1
-        AND 5 THEN CAST(
-            TRY_CAST(avg_user_rating AS FLOAT) AS DECIMAL(3, 1)
-        )
-        ELSE NULL
-    END AS avg_user_rating,
-    CASE
-        WHEN tool_id = 'TOOL005' THEN 5
-        WHEN tool_id = 'TOOL011' THEN 11
-        ELSE CAST(TRY_CAST(uae_popularity_rank AS FLOAT) AS INT)
-    END as uae_popularity_rank
-FROM
-    (
+        -- ============================================================
+        -- silver.ai_usage_logs
+        -- ============================================================
+        SET @start_time = GETDATE();
+		PRINT '>> Truncating Table: silver.ai_usage_logs';
+        TRUNCATE TABLE silver.ai_usage_logs;
+		PRINT '>> Inserting Data Into: silver.ai_usage_logs';
+
+        INSERT INTO
+            silver.ai_usage_logs(
+                log_id,
+                user_id,
+                tool_id,
+                session_date,
+                session_duration_minutes,
+                prompts_per_session,
+                prompt_category,
+                device_type,
+                satisfaction_score,
+                tokens_used
+            )
         SELECT
-            *,
-            ROW_NUMBER() OVER(
-                PARTITION BY tool_id
-                ORDER BY
-                    tool_id
-            ) as rn
+            l.log_id as log_id,
+            l.user_id as user_id,
+            l.tool_id as tool_id,
+            session_date,
+            CASE
+                WHEN TRY_CAST(session_duration_minutes as FLOAT) BETWEEN 0
+                AND 480 THEN CAST(
+                    TRY_CAST(session_duration_minutes as FLOAT) as INT
+                )
+            END as session_duration_minutes,
+            CASE
+                WHEN TRY_CAST(prompts_per_session as FLOAT) > 0 THEN CAST(TRY_CAST(prompts_per_session as FLOAT) as INT)
+                ELSE NULL
+            END as prompts_per_session,
+            TRIM(UPPER(prompt_category)) as prompt_category,
+            CASE
+                WHEN device_type IS NULL then 'OTHER'
+                WHEN TRIM(UPPER((device_type))) IN ('NULL', 'N/A', '""') THEN 'OTHER'
+                ELSE TRIM(UPPER((device_type)))
+            END as device_type,
+            CASE
+                WHEN TRY_CAST(satisfaction_score as FLOAT) BETWEEN 0
+                and 5 THEN CAST(TRY_CAST(satisfaction_score as FLOAT) as INT)
+                ELSE NULL
+            END as satisfaction_score,
+            CAST(TRY_CAST(tokens_used as FLOAT) as INT) as tokens_used
         FROM
-            bronze.raw_ai_tools
-    ) t
-WHERE
-    rn = 1;
-
--- Insert into ai_usage_logs
-TRUNCATE TABLE silver.ai_usage_logs;
-
-INSERT INTO
-    silver.ai_usage_logs(
-        log_id,
-        user_id,
-        tool_id,
-        session_date,
-        session_duration_minutes,
-        prompts_per_session,
-        prompt_category,
-        device_type,
-        satisfaction_score,
-        tokens_used
-    )
-SELECT
-    l.log_id as log_id,
-    l.user_id as user_id,
-    l.tool_id as tool_id,
-    session_date,
-    CASE
-        WHEN TRY_CAST(session_duration_minutes as FLOAT) BETWEEN 0
-        AND 480 THEN CAST(
-            TRY_CAST(session_duration_minutes as FLOAT) as INT
-        )
-    END as session_duration_minutes,
-    CASE
-        WHEN TRY_CAST(prompts_per_session as FLOAT) > 0 THEN CAST(TRY_CAST(prompts_per_session as FLOAT) as INT)
-        ELSE NULL
-    END as prompts_per_session,
-    TRIM(UPPER(prompt_category)) as prompt_category,
-    CASE
-        WHEN device_type IS NULL then 'OTHER'
-        WHEN TRIM(UPPER((device_type))) IN ('NULL', 'N/A', '""') THEN 'OTHER'
-        ELSE TRIM(UPPER((device_type)))
-    END as device_type,
-    CASE
-        WHEN TRY_CAST(satisfaction_score as FLOAT) BETWEEN 0
-        and 5 THEN CAST(TRY_CAST(satisfaction_score as FLOAT) as INT)
-        ELSE NULL
-    END as satisfaction_score,
-    CAST(TRY_CAST(tokens_used as FLOAT) as INT) as tokens_used
-FROM
-    (
-        SELECT
-            *,
-            ROW_NUMBER() OVER(
-                PARTITION BY log_id
-                ORDER BY
-                    log_id
-            ) as rn
-        FROM
-            bronze.raw_ai_usage_logs
+            (
+                SELECT
+                    *,
+                    ROW_NUMBER() OVER(
+                        PARTITION BY log_id
+                        ORDER BY
+                            log_id
+                    ) as rn
+                FROM
+                    bronze.raw_ai_usage_logs
+                WHERE
+                    log_id IS NOT NULL
+            ) l
+            INNER JOIN silver.users u ON l.user_id = u.user_id
+            INNER JOIN silver.ai_tools s ON l.tool_id = s.tool_id
         WHERE
-            log_id IS NOT NULL
-    ) l
-    INNER JOIN silver.users u ON l.user_id = u.user_id
-    INNER JOIN silver.ai_tools s ON l.tool_id = s.tool_id
-WHERE
-    rn = 1;
+            rn = 1;
+        SET @end_time = GETDATE();
+        PRINT '>> Load Duration: ' + CAST(DATEDIFF(SECOND, @start_time, @end_time) AS NVARCHAR) + ' seconds';
+        PRINT '>> -------------';
 
--- insert into silver.feedback
-TRUNCATE TABLE silver.feedback;
-INSERT INTO silver.feedback(
-    feedback_id,
-    user_id,
-    tool_id,
-    feedback_date,
-    rating,
-    feedback_text,
-    feedback_category,
-    sentiment,
-    data_quality_flag,
-    would_recommend
-)
-SELECT
-    feedback_id,
-    l.user_id as user_id,
-    l.tool_id as tool_id,
-    CASE
-        WHEN TRY_CAST(feedback_date AS DATE) > GETDATE() THEN NULL
-        ELSE TRY_CAST(feedback_date AS DATE)
-    END as feedback_date,
-    CASE
-        WHEN TRY_CAST(rating as FLOAT) BETWEEN 0
-        AND 10 THEN CAST(TRY_CAST(rating as FLOAT) as INT)
-        ELSE NULL
-    END as rating,
-    CASE
-        -- NULLs
-        WHEN feedback_text IS NULL THEN NULL -- Empty after trimming
-        WHEN TRIM(feedback_text) = '' THEN NULL -- Numeric-only values
-        WHEN TRY_CAST(feedback_text AS FLOAT) IS NOT NULL THEN NULL -- Too short
-        WHEN LEN(TRIM(feedback_text)) < 3 THEN NULL -- Suspicious characters
-        WHEN PATINDEX('%[^A-Za-z0-9 ,.?!''":;()-]%', feedback_text) > 0 THEN NULL
-        WHEN LEFT(TRIM(feedback_text), 1) = '"' THEN STUFF(TRIM(feedback_text), 1, 1, '')
-        WHEN feedback_text = '!!!!!' THEN NULL
-        WHEN feedback_text = 'asdfjkl;' THEN NULL
-        ELSE TRIM(feedback_text)
-    END AS feedback_text,
-    CASE
-        -- NULLs
-        WHEN feedback_category IS NULL THEN NULL -- Empty after trimming
-        WHEN TRIM(feedback_category) = '' THEN NULL -- Numeric-only values
-        WHEN TRY_CAST(feedback_category AS FLOAT) IS NOT NULL THEN NULL -- Too short
-        WHEN LEN(TRIM(feedback_category)) < 3 THEN NULL -- Suspicious characters
-        WHEN PATINDEX('%[^A-Za-z0-9 ,.?!''":;()-]%', feedback_category) > 0 THEN NULL
-        WHEN RIGHT(TRIM(feedback_category), 2) = '."' THEN LEFT(
-            TRIM(feedback_category),
-            LEN(TRIM(feedback_category)) - 2
-        )
-        ELSE LOWER(TRIM(feedback_category))
-    END AS feedback_category,
-    CASE
-        WHEN UPPER(sentiment) IN ('N/A', '') THEN NULL
-        ELSE UPPER(sentiment)
-    END as sentiment,
-    CASE
-        WHEN TRY_CAST(rating AS FLOAT) >= 7
-        AND UPPER(TRIM(sentiment)) = 'NEGATIVE' THEN 'SENTIMENT_MISMATCH'
-        WHEN TRY_CAST(rating as FLOAT) <= 2
-        AND UPPER(TRIM(sentiment)) = 'POSITIVE' THEN 'SENTIMENT_MISMATCH'
-        ELSE NULL
-    END AS data_quality_flag,
-    CASE
-    WHEN would_recommend IS NULL THEN NULL
-    WHEN UPPER(TRIM(would_recommend)) = 'NEGATIVE,1' THEN 'NO'
-    WHEN UPPER(TRIM(would_recommend)) = 'NEGATIVE,0' THEN 'NO'
-    WHEN UPPER(TRIM(would_recommend)) = 'NEGATIVE,N/A' THEN 'NO'
-    WHEN UPPER(TRIM(would_recommend)) = 'NEGATIVE,NO' THEN 'NO'
-    WHEN UPPER(TRIM(would_recommend)) = 'NEGATIVE,F' THEN 'NO'
-    WHEN UPPER(TRIM(would_recommend)) = 'NEGATIVE,FALSE' THEN 'NO'
-    WHEN UPPER(TRIM(would_recommend)) = 'POSITIVE,1' THEN 'YES'
-    WHEN UPPER(TRIM(would_recommend)) = 'POSITIVE,Yes' THEN 'YES'
-    WHEN UPPER(TRIM(would_recommend)) = 'POSITIVE,TRUE' THEN 'YES'
-    WHEN TRIM(
-        UPPER(
-            REPLACE(
-                REPLACE(
-                    REPLACE(
-                        REPLACE(would_recommend, '(', ''),
-                    ')', ''),
-                ',', ''),
-            '"', '')
-        )
-    ) IN ('', 'NULL', 'N/A')
-    THEN NULL
 
-    WHEN TRIM(
-        UPPER(
-            REPLACE(
-                REPLACE(
-                    REPLACE(
-                        REPLACE(would_recommend, '(', ''),
-                    ')', ''),
-                ',', ''),
-            '"', '')
-        )
-    ) IN ('YES', 'Y', 'TRUE', '1','POSITIVE')
-    THEN 'YES'
+        -- ============================================================
+        -- silver.feedback
+        -- ============================================================
+        SET @start_time = GETDATE();
+		PRINT '>> Truncating Table: silver.feedback';
+        TRUNCATE TABLE silver.feedback;
+		PRINT '>> Inserting Data Into: silver.feedback';
 
-    WHEN TRIM(
-        UPPER(
-            REPLACE(
-                REPLACE(
-                    REPLACE(
-                        REPLACE(would_recommend, '(', ''),
-                    ')', ''),
-                ',', ''),
-            '"', '')
-        )
-    ) IN ('NO', 'N', 'FALSE', '0', 'NEGATIVE')
-    THEN 'NO'
-    ELSE NULL
-END AS would_recommend
-FROM
-    (
+        INSERT INTO
+            silver.feedback(
+                feedback_id,
+                user_id,
+                tool_id,
+                feedback_date,
+                rating,
+                feedback_text,
+                feedback_category,
+                sentiment,
+                data_quality_flag,
+                would_recommend
+            )
         SELECT
-            *,
-            ROW_NUMBER() OVER(
-                PARTITION BY feedback_id
-                ORDER BY
-                    feedback_date
-            ) as rn
+            feedback_id,
+            l.user_id as user_id,
+            l.tool_id as tool_id,
+            CASE
+                WHEN TRY_CAST(feedback_date AS DATE) > GETDATE() THEN NULL
+                ELSE TRY_CAST(feedback_date AS DATE)
+            END as feedback_date,
+            CASE
+                WHEN TRY_CAST(rating as FLOAT) BETWEEN 0
+                AND 10 THEN CAST(TRY_CAST(rating as FLOAT) as INT)
+                ELSE NULL
+            END as rating,
+            CASE
+                -- NULLs
+                WHEN feedback_text IS NULL THEN NULL -- Empty after trimming
+                WHEN TRIM(feedback_text) = '' THEN NULL -- Numeric-only values
+                WHEN TRY_CAST(feedback_text AS FLOAT) IS NOT NULL THEN NULL -- Too short
+                WHEN LEN(TRIM(feedback_text)) < 3 THEN NULL -- Suspicious characters
+                WHEN PATINDEX('%[^A-Za-z0-9 ,.?!''":;()-]%', feedback_text) > 0 THEN NULL
+                WHEN LEFT(TRIM(feedback_text), 1) = '"' THEN STUFF(TRIM(feedback_text), 1, 1, '')
+                WHEN feedback_text = '!!!!!' THEN NULL
+                WHEN feedback_text = 'asdfjkl;' THEN NULL
+                ELSE TRIM(feedback_text)
+            END AS feedback_text,
+            CASE
+                -- NULLs
+                WHEN feedback_category IS NULL THEN NULL -- Empty after trimming
+                WHEN TRIM(feedback_category) = '' THEN NULL -- Numeric-only values
+                WHEN TRY_CAST(feedback_category AS FLOAT) IS NOT NULL THEN NULL -- Too short
+                WHEN LEN(TRIM(feedback_category)) < 3 THEN NULL -- Suspicious characters
+                WHEN PATINDEX('%[^A-Za-z0-9 ,.?!''":;()-]%', feedback_category) > 0 THEN NULL
+                WHEN RIGHT(TRIM(feedback_category), 2) = '."' THEN LEFT(
+                    TRIM(feedback_category),
+                    LEN(TRIM(feedback_category)) - 2
+                )
+                ELSE LOWER(TRIM(feedback_category))
+            END AS feedback_category,
+            CASE
+                WHEN UPPER(sentiment) IN ('N/A', '') THEN NULL
+                ELSE UPPER(sentiment)
+            END as sentiment,
+            CASE
+                WHEN TRY_CAST(rating AS FLOAT) >= 7
+                AND UPPER(TRIM(sentiment)) = 'NEGATIVE' THEN 'SENTIMENT_MISMATCH'
+                WHEN TRY_CAST(rating as FLOAT) <= 2
+                AND UPPER(TRIM(sentiment)) = 'POSITIVE' THEN 'SENTIMENT_MISMATCH'
+                ELSE NULL
+            END AS data_quality_flag,
+            CASE
+                WHEN would_recommend IS NULL THEN NULL
+                WHEN UPPER(TRIM(would_recommend)) = 'NEGATIVE,1' THEN 'NO'
+                WHEN UPPER(TRIM(would_recommend)) = 'NEGATIVE,0' THEN 'NO'
+                WHEN UPPER(TRIM(would_recommend)) = 'NEGATIVE,N/A' THEN 'NO'
+                WHEN UPPER(TRIM(would_recommend)) = 'NEGATIVE,NO' THEN 'NO'
+                WHEN UPPER(TRIM(would_recommend)) = 'NEGATIVE,F' THEN 'NO'
+                WHEN UPPER(TRIM(would_recommend)) = 'NEGATIVE,FALSE' THEN 'NO'
+                WHEN UPPER(TRIM(would_recommend)) = 'POSITIVE,1' THEN 'YES'
+                WHEN UPPER(TRIM(would_recommend)) = 'POSITIVE,Yes' THEN 'YES'
+                WHEN UPPER(TRIM(would_recommend)) = 'POSITIVE,TRUE' THEN 'YES'
+                WHEN TRIM(
+                    UPPER(
+                        REPLACE(
+                            REPLACE(
+                                REPLACE(
+                                    REPLACE(would_recommend, '(', ''),
+                                    ')',
+                                    ''
+                                ),
+                                ',',
+                                ''
+                            ),
+                            '"',
+                            ''
+                        )
+                    )
+                ) IN ('', 'NULL', 'N/A') THEN NULL
+                WHEN TRIM(
+                    UPPER(
+                        REPLACE(
+                            REPLACE(
+                                REPLACE(
+                                    REPLACE(would_recommend, '(', ''),
+                                    ')',
+                                    ''
+                                ),
+                                ',',
+                                ''
+                            ),
+                            '"',
+                            ''
+                        )
+                    )
+                ) IN ('YES', 'Y', 'TRUE', '1', 'POSITIVE') THEN 'YES'
+                WHEN TRIM(
+                    UPPER(
+                        REPLACE(
+                            REPLACE(
+                                REPLACE(
+                                    REPLACE(would_recommend, '(', ''),
+                                    ')',
+                                    ''
+                                ),
+                                ',',
+                                ''
+                            ),
+                            '"',
+                            ''
+                        )
+                    )
+                ) IN ('NO', 'N', 'FALSE', '0', 'NEGATIVE') THEN 'NO'
+                ELSE NULL
+            END AS would_recommend
         FROM
-            bronze.raw_feedback
+            (
+                SELECT
+                    *,
+                    ROW_NUMBER() OVER(
+                        PARTITION BY feedback_id
+                        ORDER BY
+                            feedback_date
+                    ) as rn
+                FROM
+                    bronze.raw_feedback
+                WHERE
+                    feedback_id IS NOT NULL
+            ) l
+            INNER JOIN silver.users s ON l.user_id = s.user_id
+            INNER JOIN silver.ai_tools t ON l.tool_id = t.tool_id
         WHERE
-            feedback_id IS NOT NULL
-    ) l
-INNER JOIN silver.users s
-    ON l.user_id = s.user_id
-INNER JOIN silver.ai_tools t
-    ON l.tool_id = t.tool_id
-WHERE
-    rn = 1;
+            rn = 1;
+        SET @end_time = GETDATE();
+        PRINT '>> Load Duration: ' + CAST(DATEDIFF(SECOND, @start_time, @end_time) AS NVARCHAR) + ' seconds';
+        PRINT '>> -------------';
+
+        -- ============================================================
+        -- silver.subscriptions
+        -- ============================================================
+        SET @start_time = GETDATE();
+        PRINT '>> Truncating Table: silver.subscriptions';
+        TRUNCATE TABLE silver.subscriptions;
+        PRINT '>> Inserting Data Into: silver.subscriptions';
+
+        WITH cleaned AS (
+            SELECT
+                l.subscription_id,
+                l.user_id,
+                CASE
+                    WHEN UPPER(TRIM(l.plan_type)) = 'PROO'        THEN 'PRO'
+                    WHEN UPPER(TRIM(l.plan_type)) = 'FREE'         THEN 'BASIC'
+                    WHEN UPPER(TRIM(l.plan_type)) IN ('N/A','--')  THEN NULL
+                    ELSE UPPER(TRIM(l.plan_type))
+                END AS plan_type,
+                CASE
+                    WHEN UPPER(TRIM(l.currency)) = 'ADE'           THEN 'AED'
+                    WHEN UPPER(TRIM(l.currency)) IN ('N/A','--')   THEN NULL
+                    ELSE UPPER(TRIM(l.currency))
+                END AS currency,
+                CASE
+                    WHEN TRY_CAST(l.amount_paid AS FLOAT) BETWEEN 0 AND 10000
+                    THEN TRY_CAST(l.amount_paid AS FLOAT)
+                    ELSE NULL
+                END AS amount_paid,
+                CASE
+                    WHEN TRY_CAST(l.starting_date AS DATE) > TRY_CAST(l.ending_date AS DATE)
+                        THEN TRY_CAST(l.ending_date AS DATE)
+                    WHEN TRY_CAST(l.starting_date AS DATE) > CAST(GETDATE() AS DATE)
+                        THEN NULL
+                    ELSE TRY_CAST(l.starting_date AS DATE)
+                END AS starting_date,
+                CASE
+                    WHEN TRY_CAST(l.ending_date AS DATE) IS NULL                              THEN NULL
+                    WHEN TRY_CAST(l.starting_date AS DATE) IS NULL                            THEN NULL
+                    WHEN TRY_CAST(l.ending_date AS DATE) < TRY_CAST(l.starting_date AS DATE) THEN NULL
+                    WHEN TRY_CAST(l.ending_date AS DATE) > CAST(GETDATE() AS DATE)           THEN NULL
+                    ELSE TRY_CAST(l.ending_date AS DATE)
+                END AS ending_date,
+                UPPER(TRIM(REPLACE(REPLACE(l.[status], CHAR(13), ''), CHAR(10), ''))) AS raw_status,
+                CASE
+                    WHEN UPPER(TRIM(l.billing_cycle)) IN ('N/A','NULL','--') THEN NULL
+                    ELSE UPPER(TRIM(l.billing_cycle))
+                END AS billing_cycle,
+                CASE UPPER(TRIM(REPLACE(REPLACE(l.auto_renew, CHAR(13), ''), CHAR(10), '')))
+                    WHEN '1'     THEN 1
+                    WHEN 'TRUE'  THEN 1
+                    WHEN 'YES'   THEN 1
+                    WHEN '0'     THEN 0
+                    WHEN 'FALSE' THEN 0
+                    WHEN 'NO'    THEN 0
+                    ELSE NULL
+                END AS auto_renew
+            FROM (
+                SELECT
+                    *,
+                    ROW_NUMBER() OVER (
+                        PARTITION BY subscription_id
+                        ORDER BY starting_date
+                    ) AS rn
+                FROM bronze.raw_subscriptions
+                WHERE subscription_id IS NOT NULL
+            ) l
+            INNER JOIN silver.users s ON l.user_id = s.user_id
+            WHERE rn = 1
+        )
+        INSERT INTO silver.subscriptions (
+            subscription_id,
+            user_id,
+            plan_type,
+            currency,
+            amount_paid,
+            starting_date,
+            ending_date,
+            [status],
+            billing_cycle,
+            auto_renew
+        )
+        SELECT
+            subscription_id,
+            user_id,
+            plan_type,
+            currency,
+            amount_paid,
+            starting_date,
+            ending_date,
+            CASE
+                WHEN raw_status = 'CANCELLED'                              THEN 'CANCELLED'
+                WHEN raw_status = 'PAUSED'                                 THEN 'PAUSED'
+                WHEN starting_date IS NULL                                 THEN NULL
+                WHEN ending_date IS NULL
+                     AND starting_date <= CAST(GETDATE() AS DATE)         THEN 'ACTIVE'
+                WHEN ending_date >= CAST(GETDATE() AS DATE)               THEN 'ACTIVE'
+                WHEN ending_date < CAST(GETDATE() AS DATE)                THEN 'EXPIRED'
+                ELSE NULL
+            END AS [status],
+            billing_cycle,
+            auto_renew
+        FROM cleaned;
+
+        SET @end_time = GETDATE();
+        PRINT '>> Load Duration: ' + CAST(DATEDIFF(SECOND, @start_time, @end_time) AS NVARCHAR) + ' seconds';
+        PRINT '>> -------------';
 
 
---- susbcription
+    SET @batch_end_time = GETDATE();
+    PRINT '=========================================='
+	PRINT 'Loading Silver Layer is Completed';
+    PRINT '   - Total Load Duration: ' + CAST(DATEDIFF(SECOND, @batch_start_time, @batch_end_time) AS NVARCHAR) + ' seconds';
+	PRINT '=========================================='
 
-SELECT 
-    subscription_id,
-    user_id as user_id,
-   CASE 
-    WHEN UPPER(TRIM(plan_type)) = 'PROO' THEN 'PRO'
-    WHEN UPPER(TRIM(plan_type)) = 'FREE' THEN 'BASIC'
-    WHEN UPPER(TRIM(plan_type)) IN ('N/A', '--') THEN NULL
-    ELSE UPPER(TRIM(plan_type))
-END as plan_type,
-   CASE 
-    WHEN UPPER(TRIM(currency)) = 'ADE' THEN 'AED'
-    WHEN UPPER(TRIM(currency)) IN ('N/A', '--') THEN NULL
-    ELSE UPPER(TRIM(currency))
-END as currency,
-    amount_paid,
-    starting_date,
-    ending_date,
-    [status],
-    billing_cycle,
-    auto_renew
-FROM (
-SELECT
-    *,
-    ROW_NUMBER() OVER(
-        PARTITION BY subscription_id
-        ORDER BY starting_date
-    ) as rn
-FROM bronze.raw_subscriptions
-) l
-WHERE rn = 1;
+    END TRY
+	BEGIN CATCH
+		PRINT '=========================================='
+		PRINT 'ERROR OCCURED DURING LOADING BRONZE LAYER'
+		PRINT 'Error Message' + ERROR_MESSAGE();
+		PRINT 'Error Message' + CAST (ERROR_NUMBER() AS NVARCHAR);
+		PRINT 'Error Message' + CAST (ERROR_STATE() AS NVARCHAR);
+		PRINT '=========================================='
+	END CATCH
+
+END;
+
