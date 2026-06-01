@@ -1,0 +1,167 @@
+
+/*
+===============================================================================
+DDL Script: Create Gold Table
+===============================================================================
+Script Purpose:
+    This script creates table for the Gold layer in the data warehouse. 
+    The Gold layer represents the final dimension and fact tables (Star Schema)
+
+    Each view performs transformations and combines data from the Silver layer 
+    to produce a clean, enriched, and business-ready dataset.
+
+Usage:
+    - These views can be queried directly for analytics and reporting.
+===============================================================================
+*/
+
+USE UAE_AI_Analytics;
+
+-- ============================================================
+-- DIMENSION TABLES
+-- ============================================================
+
+-- dim_date
+-- Generated once to cover all dates in the dataset range.
+-- No stored proc needed — run this script once manually.
+CREATE TABLE gold.dim_date (
+    date_key       INT           NOT NULL PRIMARY KEY,  -- YYYYMMDD e.g. 20230115
+    full_date      DATE          NOT NULL,
+    day_of_month   INT           NOT NULL,
+    month_num      INT           NOT NULL,
+    month_name     VARCHAR(20)   NOT NULL,
+    quarter        INT           NOT NULL,
+    year           INT           NOT NULL,
+    day_of_week    VARCHAR(15)   NOT NULL,
+    is_weekend     BIT           NOT NULL
+);
+
+-- Populate dim_date from 2022-01-01 to 2027-12-31
+-- Uses a recursive CTE to generate every date in the range
+WITH date_series AS (
+    SELECT CAST('2022-01-01' AS DATE) AS full_date
+    UNION ALL
+    SELECT DATEADD(DAY, 1, full_date)
+    FROM date_series
+    WHERE full_date < '2027-12-31'
+)
+INSERT INTO gold.dim_date (
+    date_key,
+    full_date,
+    day_of_month,
+    month_num,
+    month_name,
+    quarter,
+    year,
+    day_of_week,
+    is_weekend
+)
+SELECT
+    CAST(FORMAT(full_date, 'yyyyMMdd') AS INT)  AS date_key,
+    full_date,
+    DAY(full_date)                               AS day_of_month,
+    MONTH(full_date)                             AS month_num,
+    DATENAME(MONTH, full_date)                   AS month_name,
+    DATEPART(QUARTER, full_date)                 AS quarter,
+    YEAR(full_date)                              AS year,
+    DATENAME(WEEKDAY, full_date)                 AS day_of_week,
+    CASE WHEN DATEPART(WEEKDAY, full_date) IN (1, 7) THEN 1 ELSE 0 END AS is_weekend
+FROM date_series
+OPTION (MAXRECURSION 3000);
+
+-- ─────────────────────────────────────────────────────────────
+
+-- dim_users
+CREATE TABLE gold.dim_users (
+    user_key      INT           NOT NULL IDENTITY(1,1) PRIMARY KEY,
+    user_id       VARCHAR(20)   NOT NULL,
+    full_name     NVARCHAR(200),
+    email         NVARCHAR(300),
+    age           INT,
+    age_group     VARCHAR(20),
+    gender        VARCHAR(30),
+    city          VARCHAR(100),
+    nationality   VARCHAR(100),
+    occupation    NVARCHAR(200),
+    signup_date   DATE,
+    plan_type     VARCHAR(30),
+    is_active     VARCHAR(5)
+);
+
+-- ─────────────────────────────────────────────────────────────
+
+-- dim_ai_tools
+CREATE TABLE gold.dim_ai_tools (
+    tool_key                      INT           NOT NULL IDENTITY(1,1) PRIMARY KEY,
+    tool_id                       VARCHAR(20)   NOT NULL,
+    tool_name                     VARCHAR(100),
+    category                      VARCHAR(60),
+    pricing_model                 VARCHAR(30),
+    monthly_active_users_millions DECIMAL(8,1),
+    launch_year                   INT,
+    parent_company                VARCHAR(100),
+    avg_user_rating               DECIMAL(3,1),
+    uae_popularity_rank           INT
+);
+
+-- ─────────────────────────────────────────────────────────────
+
+-- dim_prompt_category
+CREATE TABLE gold.dim_prompt_category (
+    category_key   INT          NOT NULL IDENTITY(1,1) PRIMARY KEY,
+    category_name  VARCHAR(60)  NOT NULL
+);
+
+-- ============================================================
+-- FACT TABLES
+-- ============================================================
+
+-- fact_ai_usage
+CREATE TABLE gold.fact_ai_usage (
+    usage_key                 INT   NOT NULL IDENTITY(1,1) PRIMARY KEY,
+    log_id                    VARCHAR(20),
+    user_key                  INT   REFERENCES gold.dim_users(user_key),
+    tool_key                  INT   REFERENCES gold.dim_ai_tools(tool_key),
+    date_key                  INT   REFERENCES gold.dim_date(date_key),
+    category_key              INT   REFERENCES gold.dim_prompt_category(category_key),
+    session_duration_minutes  INT,
+    prompts_per_session       INT,
+    device_type               VARCHAR(30),
+    satisfaction_score        INT,
+    tokens_used               INT
+);
+
+-- ─────────────────────────────────────────────────────────────
+
+-- fact_subscriptions
+CREATE TABLE gold.fact_subscriptions (
+    subscription_key  INT            NOT NULL IDENTITY(1,1) PRIMARY KEY,
+    subscription_id   VARCHAR(20),
+    user_key          INT            REFERENCES gold.dim_users(user_key),
+    date_key          INT            REFERENCES gold.dim_date(date_key),  -- maps to starting_date
+    plan_type         VARCHAR(30),
+    currency          VARCHAR(10),
+    amount_paid       DECIMAL(10,2),
+    starting_date     DATE,
+    ending_date       DATE,
+    [status]          VARCHAR(20),
+    billing_cycle     VARCHAR(20),
+    auto_renew        INT
+);
+
+-- ─────────────────────────────────────────────────────────────
+
+-- fact_feedback
+CREATE TABLE gold.fact_feedback (
+    feedback_key       INT   NOT NULL IDENTITY(1,1) PRIMARY KEY,
+    feedback_id        VARCHAR(20),
+    user_key           INT   REFERENCES gold.dim_users(user_key),
+    tool_key           INT   REFERENCES gold.dim_ai_tools(tool_key),
+    date_key           INT   REFERENCES gold.dim_date(date_key),
+    rating             INT,
+    feedback_text      NVARCHAR(MAX),
+    feedback_category  VARCHAR(60),
+    sentiment          VARCHAR(20),
+    would_recommend    VARCHAR(5),
+    data_quality_flag  VARCHAR(60)
+);
