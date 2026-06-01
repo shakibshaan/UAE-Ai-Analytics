@@ -1,0 +1,251 @@
+CREATE OR ALTER PROCEDURE gold.load_gold AS
+BEGIN
+    DECLARE @start_time DATETIME, @end_time DATETIME, @batch_start_time DATETIME, @batch_end_time DATETIME;
+    BEGIN TRY
+        SET @batch_start_time = GETDATE();
+        PRINT '================================================';
+        PRINT 'Loading Gold Layer';
+        PRINT '================================================';
+
+        -- ============================================================
+        -- dim_users
+        -- ============================================================
+        SET @start_time = GETDATE();
+        PRINT '>> Truncating Table: gold.dim_users';
+        DELETE FROM gold.dim_users;
+        PRINT '>> Inserting Data Into: gold.dim_users';
+
+        INSERT INTO gold.dim_users (
+            user_id,
+            full_name,
+            email,
+            age,
+            age_group,
+            gender,
+            city,
+            nationality,
+            occupation,
+            signup_date,
+            plan_type,
+            is_active
+        )
+        SELECT
+            user_id,
+            full_name,
+            email,
+            age,
+            CASE
+                WHEN age BETWEEN 18 AND 24 THEN '18-24'
+                WHEN age BETWEEN 25 AND 34 THEN '25-34'
+                WHEN age BETWEEN 35 AND 44 THEN '35-44'
+                WHEN age BETWEEN 45 AND 54 THEN '45-54'
+                WHEN age >= 55             THEN '55+'
+                ELSE 'Unknown'
+            END AS age_group,
+            gender,
+            city,
+            nationality,
+            occupation,
+            signup_date,
+            plan_type,
+            is_active
+        FROM silver.users;
+
+        SET @end_time = GETDATE();
+        PRINT '>> Load Duration: ' + CAST(DATEDIFF(SECOND, @start_time, @end_time) AS NVARCHAR) + ' seconds';
+        PRINT '>> -------------';
+
+        -- ============================================================
+        -- dim_ai_tools
+        -- ============================================================
+        SET @start_time = GETDATE();
+        PRINT '>> Truncating Table: gold.dim_ai_tools';
+        DELETE FROM gold.dim_ai_tools;
+        PRINT '>> Inserting Data Into: gold.dim_ai_tools';
+
+        INSERT INTO gold.dim_ai_tools (
+            tool_id,
+            tool_name,
+            category,
+            pricing_model,
+            monthly_active_users_millions,
+            launch_year,
+            parent_company,
+            avg_user_rating,
+            uae_popularity_rank
+        )
+        SELECT
+            tool_id,
+            tool_name,
+            category,
+            pricing_model,
+            monthly_active_users_millions,
+            launch_year,
+            parent_company,
+            avg_user_rating,
+            uae_popularity_rank
+        FROM silver.ai_tools;
+
+        SET @end_time = GETDATE();
+        PRINT '>> Load Duration: ' + CAST(DATEDIFF(SECOND, @start_time, @end_time) AS NVARCHAR) + ' seconds';
+        PRINT '>> -------------';
+
+        -- ============================================================
+        -- dim_prompt_category
+        -- ============================================================
+        SET @start_time = GETDATE();
+        PRINT '>> Truncating Table: gold.dim_prompt_category';
+        DELETE FROM gold.dim_prompt_category;
+        PRINT '>> Inserting Data Into: gold.dim_prompt_category';
+
+        INSERT INTO gold.dim_prompt_category (category_name)
+        SELECT DISTINCT prompt_category
+        FROM silver.ai_usage_logs
+        WHERE prompt_category IS NOT NULL
+        ORDER BY prompt_category;
+
+        SET @end_time = GETDATE();
+        PRINT '>> Load Duration: ' + CAST(DATEDIFF(SECOND, @start_time, @end_time) AS NVARCHAR) + ' seconds';
+        PRINT '>> -------------';
+
+        -- ============================================================
+        -- fact_ai_usage
+        -- ============================================================
+        SET @start_time = GETDATE();
+        PRINT '>> Truncating Table: gold.fact_ai_usage';
+        TRUNCATE TABLE gold.fact_ai_usage;
+        PRINT '>> Inserting Data Into: gold.fact_ai_usage';
+
+        INSERT INTO gold.fact_ai_usage (
+            log_id,
+            user_key,
+            tool_key,
+            date_key,
+            category_key,
+            session_duration_minutes,
+            prompts_per_session,
+            device_type,
+            satisfaction_score,
+            tokens_used
+        )
+        SELECT
+            l.log_id,
+            u.user_key,
+            t.tool_key,
+            d.date_key,
+            c.category_key,
+            l.session_duration_minutes,
+            l.prompts_per_session,
+            l.device_type,
+            l.satisfaction_score,
+            l.tokens_used
+        FROM silver.ai_usage_logs l
+        INNER JOIN gold.dim_users          u ON l.user_id        = u.user_id
+        INNER JOIN gold.dim_ai_tools       t ON l.tool_id        = t.tool_id
+        INNER JOIN gold.dim_date           d ON l.session_date   = d.full_date
+        LEFT  JOIN gold.dim_prompt_category c ON l.prompt_category = c.category_name;
+
+        SET @end_time = GETDATE();
+        PRINT '>> Load Duration: ' + CAST(DATEDIFF(SECOND, @start_time, @end_time) AS NVARCHAR) + ' seconds';
+        PRINT '>> -------------';
+
+        -- ============================================================
+        -- fact_subscriptions
+        -- ============================================================
+        SET @start_time = GETDATE();
+        PRINT '>> Truncating Table: gold.fact_subscriptions';
+        TRUNCATE TABLE gold.fact_subscriptions;
+        PRINT '>> Inserting Data Into: gold.fact_subscriptions';
+
+        INSERT INTO gold.fact_subscriptions (
+            subscription_id,
+            user_key,
+            date_key,
+            plan_type,
+            currency,
+            amount_paid,
+            starting_date,
+            ending_date,
+            [status],
+            billing_cycle,
+            auto_renew
+        )
+        SELECT
+            s.subscription_id,
+            u.user_key,
+            d.date_key,
+            s.plan_type,
+            s.currency,
+            s.amount_paid,
+            s.starting_date,
+            s.ending_date,
+            s.[status],
+            s.billing_cycle,
+            s.auto_renew
+        FROM silver.subscriptions s
+        INNER JOIN gold.dim_users u ON s.user_id       = u.user_id
+        INNER JOIN gold.dim_date  d ON s.starting_date = d.full_date;
+
+        SET @end_time = GETDATE();
+        PRINT '>> Load Duration: ' + CAST(DATEDIFF(SECOND, @start_time, @end_time) AS NVARCHAR) + ' seconds';
+        PRINT '>> -------------';
+
+        -- ============================================================
+        -- fact_feedback
+        -- ============================================================
+        SET @start_time = GETDATE();
+        PRINT '>> Truncating Table: gold.fact_feedback';
+        TRUNCATE TABLE gold.fact_feedback;
+        PRINT '>> Inserting Data Into: gold.fact_feedback';
+
+        INSERT INTO gold.fact_feedback (
+            feedback_id,
+            user_key,
+            tool_key,
+            date_key,
+            rating,
+            feedback_text,
+            feedback_category,
+            sentiment,
+            would_recommend,
+            data_quality_flag
+        )
+        SELECT
+            f.feedback_id,
+            u.user_key,
+            t.tool_key,
+            d.date_key,
+            f.rating,
+            f.feedback_text,
+            f.feedback_category,
+            f.sentiment,
+            f.would_recommend,
+            f.data_quality_flag
+        FROM silver.feedback f
+        INNER JOIN gold.dim_users    u ON f.user_id      = u.user_id
+        INNER JOIN gold.dim_ai_tools t ON f.tool_id      = t.tool_id
+        INNER JOIN gold.dim_date     d ON f.feedback_date = d.full_date;
+
+        SET @end_time = GETDATE();
+        PRINT '>> Load Duration: ' + CAST(DATEDIFF(SECOND, @start_time, @end_time) AS NVARCHAR) + ' seconds';
+        PRINT '>> -------------';
+
+        SET @batch_end_time = GETDATE();
+        PRINT '==========================================';
+        PRINT 'Loading Gold Layer is Completed';
+        PRINT '   - Total Load Duration: ' + CAST(DATEDIFF(SECOND, @batch_start_time, @batch_end_time) AS NVARCHAR) + ' seconds';
+        PRINT '==========================================';
+
+    END TRY
+    BEGIN CATCH
+        PRINT '==========================================';
+        PRINT 'ERROR OCCURED DURING LOADING GOLD LAYER';
+        PRINT 'Error Message: ' + ERROR_MESSAGE();
+        PRINT 'Error Number:  ' + CAST(ERROR_NUMBER() AS NVARCHAR);
+        PRINT 'Error State:   ' + CAST(ERROR_STATE() AS NVARCHAR);
+        PRINT '==========================================';
+    END CATCH
+
+END;
+GO
+
