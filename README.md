@@ -4,6 +4,21 @@
 
 ---
 
+## 🎯 What This Project Achieves
+
+The UAE is one of the fastest-growing AI adoption markets in the world. This project asks: **what does meaningful, analytics-ready data engineering look like for that context?**
+
+By the end of this project, anyone exploring the repository will be able to:
+
+- **Understand AI tool adoption trends** across the UAE — which tools are gaining traction, which user segments are driving usage, and how engagement changes over time
+- **See subscription and monetisation patterns** — how users move between free and paid tiers, where churn is concentrated, and which tools command the strongest retention
+- **Explore user satisfaction signals** — aggregated feedback and ratings broken down by tool, category, and demographics
+- **Follow a complete data pipeline** from raw, messy CSV files all the way through to a clean dimensional model and Tableau dashboards — with every design decision documented and explained
+
+This is not a tutorial reproduction. Every layer was built from scratch, debugged against real data quality issues, and shaped by deliberate engineering choices that reflect how production data teams actually work.
+
+---
+
 ## 📌 Project Overview
 
 This project ingests, cleans, and models synthetic-but-realistic AI usage data representing the UAE market — covering users, AI tools, usage logs, subscriptions, and feedback. The goal is to demonstrate production-quality data engineering thinking: handling messy source data, applying layered transformations, making honest design decisions, and surfacing business insights through a dimensional model and dashboards.
