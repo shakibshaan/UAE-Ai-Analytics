@@ -1,3 +1,6 @@
+USE UAE_AI_Analytics;
+
+
 -- Tool ranking with NPS proxy from fact_feedback
 WITH tool_sessions AS (
     SELECT
@@ -16,7 +19,7 @@ tool_feedback AS (
         SUM(CASE WHEN fb.rating >= 4 THEN 1.0 ELSE 0 END) * 100 / COUNT(*)
             - SUM(CASE WHEN fb.rating <= 2 THEN 1.0 ELSE 0 END) * 100 / COUNT(*)
             AS nps_proxy,
-        SUM(CASE WHEN fb.would_recommend = 1 THEN 1 ELSE 0 END) * 100.0
+        SUM(CASE WHEN fb.would_recommend = 'YES' THEN 1 ELSE 0 END) * 100.0
             / COUNT(*)  AS recommend_rate_pct
     FROM gold.fact_feedback fb
     GROUP BY fb.tool_key
