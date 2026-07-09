@@ -62,20 +62,7 @@ This project is a warehouse-only Data Engineering build: there is no dashboard o
 ---
 
 ## Architecture
-
-```mermaid
-flowchart LR
-    A[CSV Sources] --> B[Bronze Layer]
-    B --> C[Silver Layer]
-    C --> D[Gold Layer]
-    D --> E[Business KPIs]
-
-    style A fill:#3a3a3a,stroke:#888,color:#fff
-    style B fill:#7a4a1e,stroke:#c97b2e,color:#fff
-    style C fill:#4a4a4a,stroke:#999,color:#fff
-    style D fill:#7a6a1e,stroke:#c9a92e,color:#fff
-    style E fill:#1e5a4a,stroke:#2ec9a9,color:#fff
-```
+<img width="1536" height="1024" alt="ChatGPT Image Jul 9, 2026, 03_26_10 PM" src="https://github.com/user-attachments/assets/e5c64249-3857-46f9-855d-90a1bf64b93e" />
 
 | Layer | Role |
 |---|---|
