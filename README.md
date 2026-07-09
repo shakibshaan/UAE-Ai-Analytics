@@ -224,62 +224,8 @@ Throughout both procedures, CTEs stage intermediate logic, window functions hand
 
 ## Star Schema
 
-```mermaid
-erDiagram
-    DIM_USERS ||--o{ FACT_AI_USAGE : has
-    DIM_AI_TOOLS ||--o{ FACT_AI_USAGE : used_in
-    DIM_DATE ||--o{ FACT_AI_USAGE : occurred_on
+<img width="1770" height="1782" alt="diagram-export-7-9-2026-2_59_40-PM" src="https://github.com/user-attachments/assets/aff97143-e5b4-4832-b2f4-6bf1a29e544b" />
 
-    DIM_USERS ||--o{ FACT_SUBSCRIPTIONS : holds
-    DIM_DATE ||--o{ FACT_SUBSCRIPTIONS : billed_on
-
-    DIM_USERS ||--o{ FACT_FEEDBACK : submits
-    DIM_AI_TOOLS ||--o{ FACT_FEEDBACK : rated
-    DIM_DATE ||--o{ FACT_FEEDBACK : submitted_on
-
-    DIM_USERS {
-        int user_key PK
-        string user_id
-        string city
-        string plan_type
-    }
-    DIM_AI_TOOLS {
-        int tool_key PK
-        string tool_id
-        string tool_name
-        string category
-    }
-    DIM_DATE {
-        int date_key PK
-        date full_date
-        int year
-        int month_num
-        string month_name
-    }
-    FACT_AI_USAGE {
-        int usage_key PK
-        int date_key FK
-        int user_key FK
-        int tool_key FK
-        int session_duration
-        string prompt_category
-        int satisfaction_score
-    }
-    FACT_SUBSCRIPTIONS {
-        int subscription_key PK
-        int date_key FK
-        int user_key FK
-        string status
-        decimal amount_paid
-    }
-    FACT_FEEDBACK {
-        int feedback_key PK
-        int date_key FK
-        int user_key FK
-        int tool_key FK
-        int satisfaction_score
-    }
-```
 
 **Fact tables** carry the measures — session duration, revenue, satisfaction score — at their own grain, one row per event.
 
@@ -372,17 +318,6 @@ ORDER BY end_ym;
 - The top-rated AI tool reached an average satisfaction score of 2.8 out of 5.
 - Annual revenue peaked at approximately $38.34K.
 - DAU/MAU stickiness held around 4%, suggesting daily engagement is a small slice of the monthly active base.
-
----
-
-## Screenshots
-
-| Artifact | Location |
-|---|---|
-| Architecture Diagram | `docs/images/architecture.png` |
-| Star Schema | `docs/images/star_schema.png` |
-| SQL Scripts | `docs/images/sql_scripts.png` |
-| KPI Outputs | `docs/images/kpi_outputs.png` |
 
 ---
 
