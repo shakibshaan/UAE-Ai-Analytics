@@ -262,54 +262,8 @@ Throughout both procedures, CTEs stage intermediate logic, window functions hand
 
 Twelve KPIs are computed directly against the Gold layer, grouped into two thematic sets. Every query below is a standalone `.sql` script in `kpi_scripts/`.
 
-### Executive Overview
+<img width="1770" height="1782" alt="diagram-export-7-9-2026-2_59_40-PM" src="https://github.com/user-attachments/assets/c05dda33-b448-4fb6-9a4a-29ed2e6497e5" />
 
-| KPI | Method | Sample Result |
-|---|---|---|
-| Monthly / Yearly Active Users | `COUNT(DISTINCT user_key)` grouped by month and year | 2,935+ annual active users |
-| Monthly / Annual Recurring Revenue | `SUM(amount_paid)` on `ACTIVE`/`CANCELLED` subscriptions | $38.34K peak annual revenue |
-| ARPU | Revenue ÷ distinct paying users, monthly and yearly | Computed per period |
-| Revenue by Plan Type | `SUM(amount_paid)` grouped by `plan_type` via `dim_users` | Highest-revenue plan surfaced per period |
-| Customer Satisfaction | `AVG(satisfaction_score)` by tool | 2.8 / 5 highest tool average |
-| Monthly Churn Rate | Cancelled subscriptions ÷ total subscriptions per period | Tracked month over month |
-
-### Engagement & Retention
-
-| KPI | Method | Sample Result |
-|---|---|---|
-| DAU / MAU Stickiness | Average daily actives ÷ monthly actives, per month | ~4% stickiness ratio |
-| AI Adoption by City | `COUNT(DISTINCT user_key)` and session count, `DENSE_RANK()` by sessions | Dubai leads adoption |
-| Top AI Categories | Session count and share of total sessions by prompt category | Text Generation ≈ 20.2% of sessions |
-| Top Rated AI Tools | `AVG(satisfaction_score)` ranked by tool | Highest-rated tool per period |
-| Session Volume | Total logged sessions per tool/city | Cross-referenced with adoption |
-| Cohort Retention | User activity persistence across periods | Derived from usage and subscription facts |
-
-<details>
-<summary>View a representative KPI query — Monthly Churn Rate</summary>
-
-```sql
-WITH month_status AS (
-    SELECT
-        s.user_key,
-        d_end.year * 100 + d_end.month_num AS end_ym,
-        s.status
-    FROM gold.fact_subscriptions s
-    JOIN gold.dim_date d_end ON s.date_key = d_end.date_key
-)
-SELECT
-    end_ym AS churn_month,
-    COUNT(CASE WHEN status = 'CANCELLED' THEN 1 END) AS churned,
-    COUNT(*) AS total_at_period_start,
-    COUNT(CASE WHEN status = 'CANCELLED' THEN 1 END) * 100.0
-        / NULLIF(COUNT(*), 0) AS churn_rate_pct
-FROM month_status
-GROUP BY end_ym
-ORDER BY end_ym;
-```
-
-</details>
-
----
 
 ## Business Insights
 
