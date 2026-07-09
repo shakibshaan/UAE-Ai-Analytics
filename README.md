@@ -262,7 +262,8 @@ Throughout both procedures, CTEs stage intermediate logic, window functions hand
 
 Twelve KPIs are computed directly against the Gold layer, grouped into two thematic sets. Every query below is a standalone `.sql` script in `kpi_scripts/`.
 
-<img width="1770" height="1782" alt="diagram-export-7-9-2026-2_59_40-PM" src="https://github.com/user-attachments/assets/c05dda33-b448-4fb6-9a4a-29ed2e6497e5" />
+<img width="1536" height="1024" alt="Ex over and Engage" src="https://github.com/user-attachments/assets/fbbc2594-846d-413d-9758-10954dc9c331" />
+
 
 
 ## Business Insights
